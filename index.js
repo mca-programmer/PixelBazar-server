@@ -140,7 +140,27 @@ async function run() {
             }
         });
 
-       
+        // -------------------------
+        // Products by Category
+        // -------------------------
+        app.get('/products/category/:name', async (req, res) => {
+            const category = req.params.name;
+            const limit = parseInt(req.query.limit) || 24;
+            const skip = parseInt(req.query.skip) || 0;
+
+            try {
+                const total = await productsCollection.countDocuments({ category });
+                const products = await productsCollection.find({ category })
+                    .skip(skip)
+                    .limit(limit)
+                    .toArray();
+
+                res.send({ products, total, limit, skip });
+            } catch (error) {
+                res.status(500).send({ message: "Failed to fetch category products" });
+            }
+        });
+
 
         // Remove cart from DB 
 
