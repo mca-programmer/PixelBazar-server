@@ -32,6 +32,102 @@ app.use((req, res, next) => {
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vormdea.mongodb.net/flixoDB?retryWrites=true&w=majority`;
 const uri = process.env.MONGODB_URL;
 
+const client = new MongoClient(uri, {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
+});
+
+async function run() {
+    try {
+        const db = client.db("pixel_bazar");
+        const productsCollection = db.collection("products");
+        const cartsCollection = db.collection("carts");
+
+        // -------------------------
+        // Default Route
+        // -------------------------
+        app.get('/', (req, res) => res.send("Server is running"));
+
+        // -------------------------
+        // Products Pagination
+        // -------------------------
+        app.get('/products', async (req, res) => {
+            const limit = parseInt(req.query.limit) || 24;
+            const skip = parseInt(req.query.skip) || 0;
+
+            try {
+                const total = await productsCollection.countDocuments({});
+                const products = await productsCollection.find({})
+                    .skip(skip)
+                    .limit(limit)
+                    .toArray();
+
+                res.send({ products, total, limit, skip });
+            } catch (error) {
+                res.status(500).send({ message: "Failed to fetch products" });
+            }
+        });
+
+        // -------------------------
+        // Single Product
+        // -------------------------
+        app.get('/products/:id', async (req, res) => {
+            const id = req.params.id;
+
+            if (!ObjectId.isValid(id)) return res.status(400).send({ message: "Invalid product ID" });
+
+            const product = await productsCollection.findOne({ _id: new ObjectId(id) });
+            if (!product) return res.status(404).send({ message: "Product not found" });
+
+            res.send(product);
+        });
+
+        // -------------------------
+        // Add Product
+        // -------------------------
+        app.post('/products', async (req, res) => {
+            const product = { ...req.body, createdAt: new Date(), updatedAt: new Date() };
+            try {
+                const result = await productsCollection.insertOne(product);
+                res.status(201).send({ message: "Product added successfully", insertedId: result.insertedId });
+            } catch (error) {
+                res.status(500).send({ message: "Failed to add product" });
+            }
+        });
+
+        // -------------------------
+        // Update Product
+        // -------------------------
+        app.put('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedData = { ...req.body, updatedAt: new Date() };
+
+            try {
+                const result = await productsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedData });
+                if (result.matchedCount === 0) return res.status(404).send({ message: "Product not found" });
+                res.send({ message: "Product updated successfully" });
+            } catch (error) {
+                res.status(500).send({ message: "Failed to update product" });
+            }
+        });
+
+        // -------------------------
+        // Delete Product
+        // -------------------------
+        app.delete('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            try {
+                const result = await productsCollection.deleteOne({ _id: new ObjectId(id) });
+                if (result.deletedCount === 0) return res.status(404).send({ message: "Product not found" });
+                res.send({ message: "Product deleted successfully" });
+            } catch (error) {
+                res.status(500).send({ message: "Failed to delete product" });
+            }
+        });
+        });
 
         // Remove cart from DB 
 
