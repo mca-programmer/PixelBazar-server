@@ -161,6 +161,86 @@ async function run() {
             }
         });
 
+        // -------------------------
+        // Search Products
+        // -------------------------
+        app.get('/products/search', async (req, res) => {
+            const q = req.query.q;
+            if (!q) return res.status(400).send({ message: "Query required" });
+
+            const filter = {
+                $or: [
+                    { title: { $regex: q, $options: "i" } },
+                    { description: { $regex: q, $options: "i" } },
+                    { tags: { $regex: q, $options: "i" } }
+                ]
+            };
+
+            try {
+                const result = await productsCollection.find(filter).toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ message: "Search failed" });
+            }
+        });
+
+        // -------------------------
+        // Price Filter
+        // -------------------------
+        app.get('/products/filter', async (req, res) => {
+            const min = parseFloat(req.query.minPrice) || 0;
+            const max = parseFloat(req.query.maxPrice) || 999999;
+
+            try {
+                const result = await productsCollection.find({ price: { $gte: min, $lte: max } }).toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ message: "Filtering failed" });
+            }
+        });
+
+
+        //  Add to Cart  Quantity incrise
+        app.post("/cart", async (req, res) => {
+            const { userId, product } = req.body;
+            if (!userId || !product?.productId) {
+                return res.status(400).json({ error: "Missing data" });
+            }
+
+            try {
+                const cart = await cartsCollection.findOne({ userId });
+
+                if (!cart) {
+
+                    await cartsCollection.insertOne({
+                        userId,
+                        items: [{ ...product, quantity: 1 }],
+                        updatedAt: new Date()
+                    });
+                } else {
+
+                    const existingItem = cart.items.find(item => item.productId === product.productId);
+
+                    if (existingItem) {
+
+                        await cartsCollection.updateOne(
+                            { userId, "items.productId": product.productId },
+                            { $inc: { "items.$.quantity": 1 }, $set: { updatedAt: new Date() } }
+                        );
+                    } else {
+
+                        await cartsCollection.updateOne(
+                            { userId },
+                            { $push: { items: { ...product, quantity: 1 } }, $set: { updatedAt: new Date() } }
+                        );
+                    }
+                }
+                res.json({ success: true });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ error: "Failed to add to cart" });
+            }
+        });
 
         // Remove cart from DB 
 
