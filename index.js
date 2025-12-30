@@ -127,7 +127,20 @@ async function run() {
                 res.status(500).send({ message: "Failed to delete product" });
             }
         });
+
+        // -------------------------
+        // Categories
+        // -------------------------
+        app.get('/categories', async (req, res) => {
+            try {
+                const categories = await productsCollection.distinct("category");
+                res.send(categories);
+            } catch (error) {
+                res.status(500).send({ message: "Failed to load categories" });
+            }
         });
+
+       
 
         // Remove cart from DB 
 
