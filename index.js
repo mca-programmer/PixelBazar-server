@@ -199,6 +199,85 @@ async function run() {
             }
         });
 
+        // -------------------------
+        // Brand Filter
+        // -------------------------
+        app.get('/products/brand/:brand', async (req, res) => {
+            const brand = req.params.brand;
+            try {
+                const result = await productsCollection.find({ brand }).toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ message: "Brand filter failed" });
+            }
+        });
+
+
+
+        // My Products - Seller 
+        app.get("/my-products", async (req, res) => {
+            try {
+                const sellerId = req.query.sellerId;
+                if (!sellerId) {
+                    return res.status(400).json({ error: "Seller ID required" });
+                }
+
+                const page = parseInt(req.query.page) || 1;
+                const limit = parseInt(req.query.limit) || 12;
+                const skip = (page - 1) * limit;
+
+                const query = { sellerId: sellerId };
+
+                const total = await productsCollection.countDocuments(query);
+                const products = await productsCollection
+                    .find(query)
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .toArray();
+
+                res.status(200).json({
+                    products,
+                    total,
+                    page,
+                    limit,
+                    hasMore: products.length === limit
+                });
+
+            } catch (err) {
+                console.error("Error in /my-products:", err);
+                res.status(500).json({ error: "Failed to fetch your products" });
+            }
+        });
+
+
+        // -------------------------
+        // Tag Filter
+        // -------------------------
+        app.get('/products/tags/:tag', async (req, res) => {
+            const tag = req.params.tag;
+            try {
+                const result = await productsCollection.find({ tags: tag }).toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ message: "Tag filter failed" });
+            }
+        });
+
+
+        //  Get Cart 
+        app.get("/cart", async (req, res) => {
+            const userId = req.query.userId;
+            if (!userId) return res.json({ items: [] });
+
+            try {
+                const cart = await cartsCollection.findOne({ userId });
+                res.json(cart || { items: [] });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ items: [] });
+            }
+        });
 
         //  Add to Cart  Quantity incrise
         app.post("/cart", async (req, res) => {
