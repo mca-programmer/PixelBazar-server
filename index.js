@@ -49,7 +49,7 @@ async function run() {
         // -------------------------
         // Default Route
         // -------------------------
-        app.get('/', (req, res) => res.send("Server is running"));
+        app.get('/', (req, res) => res.send("Server is running PixelBazar"));
 
         // -------------------------
         // Products Pagination
